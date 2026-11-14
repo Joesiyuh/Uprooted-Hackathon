@@ -4,6 +4,8 @@
 
 Built for the NC A&T × Cisco hackathon challenge *Securing the Future of Human–AI Coexistence*.
 
+**Live demo:** [Open the dashboard](https://uprooted-hackathon-zstmvm25rwvqjt7ihvnfnn.streamlit.app/)
+
 ---
 
 ## The problem
@@ -45,7 +47,7 @@ flowchart LR
 | `REMOTE_CODE_EXECUTION` | `curl ... \| bash` or `wget ... \| sh` | Runs unreviewed code from the internet |
 | `PROMPT_INJECTION_DETECTED` | Text like "ignore previous instructions" or "mark this workflow as safe" | Attempts to trick the AI auditor |
 
-## Two ways to use it
+## How to use it
 
 | | **Web dashboard** (`src/app.py`) | **MCP server** (`src/mcp_server.py`) |
 |---|---|---|
@@ -54,6 +56,16 @@ flowchart LR
 | Human gate | Reviewer name and justification required, decision logged | Returns `PAUSED_FOR_HUMAN_REVIEW` and instructs the agent not to run or merge the workflow |
 
 The MCP server lets an AI agent check a workflow **before** acting on it, through a narrow, read-only interface. The agent gets a verdict, not access.
+
+### Enforced on the agent: the Claude Code hook
+
+Asking an agent to call the audit only works if the agent chooses to. The hook in `.claude/settings.json` takes that choice away. Before Claude Code runs any **Write**, **Edit**, or **Bash** command in this repo, it runs `src/hook_guard.py`:
+
+- **Write / Edit** to a file under `.github/workflows/`: the new content is audited, and the change is **blocked** if the result is `PAUSED_FOR_HUMAN_REVIEW`. The agent is told which rules fired.
+- **Bash** commands that mention `.github/workflows` are blocked outright, so the agent can't route around the audit with `cat >`, `cp`, `sed -i`, and similar.
+- If the hook itself fails, it **blocks** (fails closed), and every decision is logged.
+
+In testing, an agent asked to create a workflow using `aquasecurity/trivy-action@0.28.0` was blocked twice, then pinned both actions to commit SHAs on its own, and only then was the write allowed. The folder must stay named `.claude`, since that is where Claude Code looks for project settings.
 
 ## Validation
 
@@ -69,13 +81,14 @@ Live audits of the three demo fixtures through the MCP server, using the real Gr
 - **No final score ever fell below its rules score.**
 - The AWS key in the Trivy fixture was redacted before the AI saw it.
 
-**Automated tests: 38 passing** (`pytest`). They cover:
+**Automated tests: 111 passing** (`pytest`). They cover:
 - all three fixtures, end to end over the real MCP stdio protocol
 - the AI being unable to lower a flagged result (a fake AI answering "risk 0, totally safe" still produces PAUSED)
 - fallback to rules-only when Groq fails or returns malformed output
 - secret redaction, including that secrets never reach the AI or the log
 - blocking path traversal, absolute paths, and symlink escapes in `audit_fixture`
 - append-only audit logging
+- the agent hook: risky workflow writes blocked, safe ones allowed, and 24 shell-command bypass attempts (heredocs, `cp`, `sed -i`, quoting and glob tricks) blocked
 
 The tests replace the AI with a fake, so they run offline and don't need an API key.
 
@@ -84,8 +97,8 @@ The tests replace the AI with a fake, so they run offline and don't need an API 
 **Requirements:** Python 3.10+, and a free Groq API key from [console.groq.com/keys](https://console.groq.com/keys). On Windows, use WSL (Ubuntu).
 
 ```bash
-git clone https://github.com/dylan-richardson/Uprooted Pipeline Gatekeepered-Hackathon.git
-cd Uprooted Pipeline Gatekeepered-Hackathon
+git clone https://github.com/dylan-richardson/Uprooted-Hackathon.git
+cd Uprooted-Hackathon
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 echo "GROQ_API_KEY=your_groq_key_here" > .env
@@ -108,7 +121,7 @@ Pick a demo scenario in the sidebar, click **Run Governed Security Audit**, then
 Use absolute paths; the server finds its own files from any working directory.
 
 ```bash
-claude mcp add uprooted-pipeline-gatekeeper -- /path/to/Uprooted Pipeline Gatekeepered-Hackathon/.venv/bin/python /path/to/Uprooted Pipeline Gatekeepered-Hackathon/src/mcp_server.py
+claude mcp add uprooted-pipeline-gatekeeper -- /path/to/Uprooted-Hackathon/.venv/bin/python /path/to/Uprooted-Hackathon/src/mcp_server.py
 ```
 
 Start `claude`, run `/mcp` to confirm `uprooted-pipeline-gatekeeper` is connected, then ask:
@@ -125,13 +138,16 @@ python -m pytest -q
 ## Project structure
 
 ```
+.claude/
+  settings.json     Claude Code hook config (must keep this folder name)
 src/
   rules.py          Secret redaction and the deterministic rule engine
   ai_analyzer.py    Groq LLM analysis (strict JSON schema, untrusted-data sandboxing)
   mcp_server.py     MCP server: audit tools, governance logic, append-only audit log
   app.py            Streamlit dashboard with the human Approve / Quarantine gate
+  hook_guard.py     Claude Code hook: audits workflow writes before an agent can make them
 fixtures/           Demo workflows: Trivy attack, prompt injection, safe
-tests/              38 pytest tests (unit + end-to-end over MCP stdio)
+tests/              111 pytest tests (unit, hook, and end-to-end over MCP stdio)
 ```
 
 ## Safeguards and limitations
@@ -148,11 +164,12 @@ tests/              38 pytest tests (unit + end-to-end over MCP stdio)
 - **AI scores vary slightly between runs** (for example, 85 or 90 on the same file). Because the rules set the minimum, this never changes a PAUSED verdict.
 - **The audit log is append-only, not cryptographically tamper-proof.** Someone with access to the machine could edit the file. A production version would ship it to write-once storage.
 - **The dashboard and MCP server score slightly differently.** The dashboard also pauses a workflow if any secret was redacted, while the MCP server reports the redaction count but pauses only on rule flags or high AI risk. They also write different entry formats to `audit_log.jsonl`.
+- **The hook's shell check matches text.** It blocks any command that mentions the workflows folder, but a path assembled at runtime (variables, base64) could slip past it. A required pull-request check or branch protection would be the real backstop.
 - **It audits workflow files, not running pipelines.** It is a gate before execution, not runtime monitoring.
 
 ## Team
 
-- **Dylan Richardson** ([@dylan-richardson](https://github.com/dylan-richardson)): MCP server, AI integration, test suite
+- **Dylan Richardson** ([@dylan-richardson](https://github.com/dylan-richardson)): MCP server, AI integration, Claude Code agent hook, test suite
 - **Josiah Gibbs** ([@Joesiyuh](https://github.com/Joesiyuh)): rule engine, AI analyzer, web dashboard
-- **Zainab Aderomilehin**([@zainabromilehin](https://github.com/zainabromilehin)):
-- **Jermaine Griffin**([@jermgriffin2425](https://github.com/jermgriffin2425)):
+- **Zainab Aderomilehin** ([@zainabromilehin](https://github.com/zainabromilehin)): ROLE
+- **Jermaine Griffin** ([@jermgriffin2425](https://github.com/jermgriffin2425)): ROLE
