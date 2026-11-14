@@ -382,12 +382,12 @@ if "last_result" in st.session_state:
     else:
         st.success("All deterministic guardrails and AI checks passed. Pipeline cleared for automated execution.")
 
-# --- Step 4: Audit Trail ---
-st.divider()
-st.markdown("#### 4. Tamper-Evident Governance Audit Trail (`audit_log.jsonl`)")
-logs = read_audit_log()
-if logs:
-    df = pd.DataFrame(logs)
-    st.dataframe(df, width="stretch", hide_index=True)
-else:
-    st.caption("No governance events logged yet. Run an audit above to populate the immutable ledger.")
+    # --- Step 4: Audit Trail ---
+    st.divider()
+    st.markdown("#### 4. Tamper-Evident Governance Audit Trail (`audit_log.jsonl`)")
+    logs = read_audit_log()
+    if logs:
+        df = pd.DataFrame(logs)
+        st.dataframe(df, width="stretch", hide_index=True)
+    else:
+        st.caption("No governance events logged yet. Run an audit above to populate the immutable ledger.")
