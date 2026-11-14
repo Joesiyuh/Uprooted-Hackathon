@@ -146,6 +146,25 @@ SCENARIOS = {
 }
 
 
+def _pick_attr(obj, names: tuple[str, ...], default=None):
+    for name in names:
+        val = getattr(obj, name, None)
+        if val is not None:
+            return val
+    return default
+
+
+def _extract_sanitized_yaml(res, raw_yaml: str) -> str:
+    yaml_text = _pick_attr(res, ("sanitized_yaml", "redacted_yaml", "cleaned_yaml", "scrubbed_yaml"))
+    if yaml_text:
+        return str(yaml_text)
+    try:
+        from src.rules import redact_secrets
+        out = redact_secrets(raw_yaml)
+        return out[0] if isinstance(out, tuple) else str(out)
+    except Exception:
+        return raw_yaml
+
 def _extract_findings(res) -> list[str]:
     for attr in ("rule_findings", "deterministic_findings", "findings", "rule_violations", "violations"):
         val = getattr(res, attr, None)
@@ -232,12 +251,12 @@ if run_clicked:
             st.session_state["last_result"] = result
             st.session_state["last_raw_yaml"] = workflow_yaml
             st.session_state["last_scenario"] = selected_scenario
-            if result.status == "APPROVED":
+            if str(_pick_attr(result, ("status", "decision", "gate_status"), "")) == "APPROVED":
                 append_audit_log({
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "scenario": selected_scenario,
-                    "risk_score": result.final_risk_score,
-                    "secrets_redacted": result.secrets_redacted_count,
+                    "risk_score": int(_pick_attr(result, ("final_risk_score", "risk_score", "score"), 0)),
+                    "secrets_redacted": int(_pick_attr(result, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
                     "decision": "AUTO_APPROVED_LOW_RISK",
                     "reviewer": "Uproot Policy Engine",
                 })
@@ -247,8 +266,9 @@ if run_clicked:
 # --- Step 2 & 3: Audit Results + Human Governance Gate ---
 if "last_result" in st.session_state:
     res = st.session_state["last_result"]
-    is_paused = res.status != "APPROVED"
-    score = res.final_risk_score
+    status_val = str(_pick_attr(res, ("status", "decision", "gate_status"), "PAUSED_FOR_HUMAN_REVIEW"))
+    is_paused = status_val != "APPROVED"
+    score = int(_pick_attr(res, ("final_risk_score", "risk_score", "score"), 0))
 
     st.divider()
     st.markdown("#### 2. Real-Time Security & Privacy Telemetry")
@@ -279,11 +299,11 @@ if "last_result" in st.session_state:
         """, unsafe_allow_html=True)
 
     with k3:
-        sec_color = "#38BDF8" if res.secrets_redacted_count > 0 else "#F8FAFC"
+        sec_color = "#38BDF8" if int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)) > 0 else "#F8FAFC"
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-label">Secrets Redacted Pre-AI</div>
-            <div class="kpi-value" style="color:{sec_color};">{res.secrets_redacted_count}</div>
+            <div class="kpi-value" style="color:{sec_color};">{int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0))}</div>
             <div class="kpi-sub">Never sent to external LLM</div>
         </div>
         """, unsafe_allow_html=True)
@@ -303,9 +323,9 @@ if "last_result" in st.session_state:
     with left_col:
         st.markdown("##### 🧠 AI Risk Assessment & Deterministic Findings")
         if is_paused:
-            st.error(f"**Executive Verdict:** {res.ai_summary}")
+            st.error(f"**Executive Verdict:** {str(_pick_attr(res, ("ai_summary", "summary", "executive_summary", "reasoning", "rationale"), "Audit completed."))}")
         else:
-            st.success(f"**Executive Verdict:** {res.ai_summary}")
+            st.success(f"**Executive Verdict:** {str(_pick_attr(res, ("ai_summary", "summary", "executive_summary", "reasoning", "rationale"), "Audit completed."))}")
 
         findings = _extract_findings(res)
         if findings:
@@ -323,7 +343,7 @@ if "last_result" in st.session_state:
         st.caption("Compare raw input vs. zero-trust scrubbed YAML transmitted over API:")
         tab_sanitized, tab_raw = st.tabs(["Sanitized YAML (Sent to LLM)", "Original Raw YAML"])
         with tab_sanitized:
-            st.code(res.sanitized_yaml, language="yaml")
+            st.code(_extract_sanitized_yaml(res, st.session_state.get("last_raw_yaml", "")), language="yaml")
         with tab_raw:
             st.code(st.session_state.get("last_raw_yaml", ""), language="yaml")
 
@@ -343,7 +363,7 @@ if "last_result" in st.session_state:
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "scenario": st.session_state.get("last_scenario", selected_scenario),
                     "risk_score": score,
-                    "secrets_redacted": res.secrets_redacted_count,
+                    "secrets_redacted": int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
                     "decision": "QUARANTINED_BLOCKED",
                     "reviewer": reviewer_name,
                 })
@@ -354,7 +374,7 @@ if "last_result" in st.session_state:
                     "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
                     "scenario": st.session_state.get("last_scenario", selected_scenario),
                     "risk_score": score,
-                    "secrets_redacted": res.secrets_redacted_count,
+                    "secrets_redacted": int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
                     "decision": "HUMAN_OVERRIDE_APPROVED",
                     "reviewer": reviewer_name,
                 })
