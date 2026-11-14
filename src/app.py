@@ -258,7 +258,12 @@ if run_clicked:
                     "risk_score": int(_pick_attr(result, ("final_risk_score", "risk_score", "score"), 0)),
                     "secrets_redacted": int(_pick_attr(result, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
                     "decision": "AUTO_APPROVED_LOW_RISK",
+<<<<<<< HEAD
                     "reviewer": "Uprooted Pipeline Policy Engine",
+=======
+                    "justification": "Passed deterministic checks and low AI risk threshold.",
+                    "reviewer": "Uprooted Pipeline Gatekeepered Policy Engine",
+>>>>>>> feat/web-dashboard
                 })
         except Exception as exc:
             st.error(f"Audit failed: {exc}")
@@ -350,35 +355,56 @@ if "last_result" in st.session_state:
     # --- Step 3: Human-in-the-Loop Gate ---
     st.divider()
     st.markdown("#### 3. Human-in-the-Loop Governance Gate")
+    sec_count = int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0))
     if is_paused:
         st.warning(
             "**Pipeline Halted:** High-risk supply-chain indicators or prompt-injection attempts require explicit human sign-off before execution."
         )
-        g1, g2, g3 = st.columns([1.2, 1.2, 1.6])
+        g1, g2 = st.columns([1.0, 2.0])
         with g1:
-            reviewer_name = st.text_input("Approver / Security Lead", value="Josiah (SecOps Lead)", label_visibility="collapsed")
+            reviewer_name = st.text_input(
+                "Approver / Security Lead",
+                value="",
+                placeholder="Enter approver name & role",
+            )
         with g2:
+            override_reason = st.text_input(
+                "Override Justification (Required to bypass high-risk block)",
+                value="",
+                placeholder="e.g., Verified hotfix commit SHA with release engineering lead (#INC-402)",
+            )
+
+        b1, b2 = st.columns([1.2, 1.2])
+        with b1:
             if st.button("🛑 Quarantine & Block Pipeline", type="primary", width="stretch"):
-                append_audit_log({
-                    "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                    "scenario": st.session_state.get("last_scenario", selected_scenario),
-                    "risk_score": score,
-                    "secrets_redacted": int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
-                    "decision": "QUARANTINED_BLOCKED",
-                    "reviewer": reviewer_name,
-                })
-                st.toast("Pipeline quarantined and logged to audit trail!", icon="🛑")
-        with g3:
+                if not reviewer_name.strip():
+                    st.error("Governance Policy: Enter an Approver / Security Lead name before logging a quarantine decision.")
+                else:
+                    append_audit_log({
+                        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "scenario": st.session_state.get("last_scenario", selected_scenario),
+                        "risk_score": score,
+                        "secrets_redacted": sec_count,
+                        "decision": "QUARANTINED_BLOCKED",
+                        "reviewer": reviewer_name.strip(),
+                        "justification": override_reason.strip() or "Blocked by policy gatekeeper due to elevated supply-chain risk.",
+                    })
+                    st.toast("Pipeline quarantined and logged to append-only log!", icon="🛑")
+        with b2:
             if st.button("⚠️ Override & Approve Execution", width="stretch"):
-                append_audit_log({
-                    "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                    "scenario": st.session_state.get("last_scenario", selected_scenario),
-                    "risk_score": score,
-                    "secrets_redacted": int(_pick_attr(res, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
-                    "decision": "HUMAN_OVERRIDE_APPROVED",
-                    "reviewer": reviewer_name,
-                })
-                st.toast("Human override recorded in audit trail.", icon="⚠️")
+                if not reviewer_name.strip() or len(override_reason.strip()) < 10:
+                    st.error("Governance Policy: Enter your name and at least 10 characters of justification before overriding a high-risk block.")
+                else:
+                    append_audit_log({
+                        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                        "scenario": st.session_state.get("last_scenario", selected_scenario),
+                        "risk_score": score,
+                        "secrets_redacted": sec_count,
+                        "decision": "HUMAN_OVERRIDE_APPROVED",
+                        "reviewer": reviewer_name.strip(),
+                        "justification": override_reason.strip(),
+                    })
+                    st.toast("Human override + justification recorded in append-only log.", icon="⚠️")
     else:
         st.success("All deterministic guardrails and AI checks passed. Pipeline cleared for automated execution.")
 
@@ -390,4 +416,4 @@ if "last_result" in st.session_state:
         df = pd.DataFrame(logs)
         st.dataframe(df, width="stretch", hide_index=True)
     else:
-        st.caption("No governance events logged yet. Run an audit above to populate the immutable ledger.")
+        st.caption("No governance events logged yet. Run an audit above to populate the append-only log.")
