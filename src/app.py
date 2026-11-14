@@ -12,7 +12,7 @@ import streamlit as st
 from src.ai_analyzer import analyze_workflow
 
 st.set_page_config(
-    page_title="Uproot | Zero-Trust AI Pipeline Gatekeeper",
+    page_title="Uprooted Pipeline Gatekeepered Pipeline Gatekeeper | Zero-Trust AI Security",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -198,7 +198,7 @@ def read_audit_log() -> list[dict]:
 
 # --- Sidebar Controls ---
 with st.sidebar:
-    st.markdown("### 🛡️ Uproot Control Plane")
+    st.markdown("### 🛡️ Uprooted Pipeline Gatekeepered Control Plane")
     st.caption("Zero-Trust CI/CD & AI Agent Governance")
     st.divider()
 
@@ -221,7 +221,7 @@ with st.sidebar:
 st.markdown("""
 <div class="hero-banner">
     <div class="hero-badge">Zero-Trust Supply Chain &amp; AI Governance</div>
-    <h1 class="hero-title">🛡️ Uproot Pipeline Gatekeeper</h1>
+    <h1 class="hero-title">🛡️ Uprooted Pipeline Gatekeepered Pipeline Gatekeeper</h1>
     <p class="hero-sub">
         Local secret redaction, deterministic CI/CD policy enforcement, sandboxed LLM risk scoring, and human-in-the-loop approval gates.
     </p>
@@ -258,7 +258,7 @@ if run_clicked:
                     "risk_score": int(_pick_attr(result, ("final_risk_score", "risk_score", "score"), 0)),
                     "secrets_redacted": int(_pick_attr(result, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
                     "decision": "AUTO_APPROVED_LOW_RISK",
-                    "reviewer": "Uproot Policy Engine",
+                    "reviewer": "Uprooted Pipeline Gatekeepered Policy Engine",
                 })
         except Exception as exc:
             st.error(f"Audit failed: {exc}")
