@@ -65,7 +65,7 @@ workflow_input = st.text_area(
     height=230,
 )
 
-if st.button("🔍 Run Governed Security Audit", type="primary", use_container_width=True):
+if st.button("🔍 Run Governed Security Audit", type="primary", width='stretch'):
     if not workflow_input.strip():
         st.warning("Please paste a GitHub Actions YAML workflow first.")
     else:
@@ -122,7 +122,7 @@ if "last_report" in st.session_state:
         )
         b1, b2 = st.columns(2)
         with b1:
-            if st.button("🛑 Quarantine & Block Pipeline", type="primary", use_container_width=True):
+            if st.button("🛑 Quarantine & Block Pipeline", type="primary", width='stretch'):
                 append_audit_log({
                     "logged_at_utc": datetime.now(timezone.utc).isoformat(),
                     "workflow_sha256": rep["workflow_sha256"],
@@ -135,7 +135,7 @@ if "last_report" in st.session_state:
                 st.session_state["decision_recorded"] = True
                 st.error("Pipeline QUARANTINED. Decision recorded to immutable audit log.")
         with b2:
-            if st.button("⚠️ Override & Approve Execution", use_container_width=True):
+            if st.button("⚠️ Override & Approve Execution", width='stretch'):
                 append_audit_log({
                     "logged_at_utc": datetime.now(timezone.utc).isoformat(),
                     "workflow_sha256": rep["workflow_sha256"],
@@ -164,6 +164,6 @@ st.divider()
 st.subheader("4. Tamper-Evident Governance Audit Trail")
 logs = load_audit_logs()
 if logs:
-    st.dataframe(logs, use_container_width=True)
+    st.dataframe(logs, width='stretch')
 else:
     st.caption("No audit decisions logged yet. Run a scan above to populate the compliance trail.")
