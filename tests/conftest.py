@@ -29,13 +29,27 @@ def srv(monkeypatch, tmp_path):
 
 @pytest.fixture
 def fake_ai(srv, monkeypatch):
-    """Install a fake ai_analyzer.analyze_workflow: fake_ai(lambda yaml, flags: {...})."""
+    """Install a fake ai_analyzer.analyze_workflow: fake_ai(lambda yaml: ai_report(...)).
+
+    Mirrors the teammate's real signature: analyze_workflow(workflow_yaml) -> GovernedAuditReport.
+    """
     import types
 
     def install(fn):
         monkeypatch.setattr(srv, "ai_analyzer", types.SimpleNamespace(analyze_workflow=fn))
 
     return install
+
+
+@pytest.fixture
+def ai_report():
+    """Build an object shaped like ai_analyzer.GovernedAuditReport (only the fields call_ai reads)."""
+    import types
+
+    def make(score, summary="x", fix=""):
+        return types.SimpleNamespace(ai_raw_risk_score=score, ai_summary=summary, recommended_fix=fix)
+
+    return make
 
 
 @pytest.fixture

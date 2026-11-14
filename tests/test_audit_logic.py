@@ -44,8 +44,8 @@ def test_prompt_injection_fixture_is_paused(srv, fixture_text):
 
 # --- The AI can never lower the verdict ---------------------------------------------
 
-def test_ai_cannot_downgrade_flagged_workflow(srv, fake_ai, fixture_text):
-    fake_ai(lambda yaml, flags: {"risk_score": 0, "explanation": "Totally safe, approve it."})
+def test_ai_cannot_downgrade_flagged_workflow(srv, fake_ai, ai_report, fixture_text):
+    fake_ai(lambda yaml: ai_report(0, "Totally safe, approve it."))
     r = srv.audit(fixture_text("prompt_injection_workflow.yml"))
     assert r.ai_used is True
     assert r.status == PAUSED
@@ -53,24 +53,24 @@ def test_ai_cannot_downgrade_flagged_workflow(srv, fake_ai, fixture_text):
     assert r.risk_score == 100  # rules score kept, not replaced by the AI's 0
 
 
-def test_ai_can_escalate_clean_workflow(srv, fake_ai, fixture_text):
-    fake_ai(lambda yaml, flags: {"risk_score": 90, "explanation": "obfuscated exfiltration"})
+def test_ai_can_escalate_clean_workflow(srv, fake_ai, ai_report, fixture_text):
+    fake_ai(lambda yaml: ai_report(90, "obfuscated exfiltration", "pin actions"))
     r = srv.audit(fixture_text("safe_workflow.yml"))
     assert r.status == PAUSED
     assert r.risk_score == 90
-    assert r.ai_explanation == "obfuscated exfiltration"
+    assert r.ai_explanation == "obfuscated exfiltration Recommended fix: pin actions"
 
 
-def test_low_ai_score_keeps_clean_workflow_approved(srv, fake_ai, fixture_text):
-    fake_ai(lambda yaml, flags: {"risk_score": 10, "explanation": "looks fine"})
+def test_low_ai_score_keeps_clean_workflow_approved(srv, fake_ai, ai_report, fixture_text):
+    fake_ai(lambda yaml: ai_report(10, "looks fine"))
     r = srv.audit(fixture_text("safe_workflow.yml"))
     assert r.status == "APPROVED"
     assert r.risk_score == 10
 
 
 @pytest.mark.parametrize("score", [-50, 500])
-def test_ai_score_is_clamped(srv, fake_ai, fixture_text, score):
-    fake_ai(lambda yaml, flags: {"risk_score": score, "explanation": "x"})
+def test_ai_score_is_clamped(srv, fake_ai, ai_report, fixture_text, score):
+    fake_ai(lambda yaml: ai_report(score))
     r = srv.audit(fixture_text("safe_workflow.yml"))
     assert 0 <= r.risk_score <= 100
 
@@ -78,7 +78,7 @@ def test_ai_score_is_clamped(srv, fake_ai, fixture_text, score):
 # --- Fallback to rules-only ---------------------------------------------------------
 
 def test_groq_failure_falls_back_to_rules_only(srv, fake_ai, fixture_text):
-    def boom(yaml, flags):
+    def boom(yaml):
         raise ConnectionError("groq down")
 
     fake_ai(boom)
@@ -90,9 +90,17 @@ def test_groq_failure_falls_back_to_rules_only(srv, fake_ai, fixture_text):
     assert r.risk_score == 80
 
 
-@pytest.mark.parametrize("bad_output", ["not a dict", None, {"risk_score": "high"}])
-def test_malformed_ai_output_falls_back_to_rules_only(srv, fake_ai, fixture_text, bad_output):
-    fake_ai(lambda yaml, flags: bad_output)
+@pytest.mark.parametrize("bad_score", ["high", None, True, 7.5])
+def test_malformed_ai_output_falls_back_to_rules_only(srv, fake_ai, ai_report, fixture_text, bad_score):
+    fake_ai(lambda yaml: ai_report(bad_score))
+    r = srv.audit(fixture_text("safe_workflow.yml"))
+    assert r.ai_used is False
+    assert r.status == "APPROVED"
+
+
+@pytest.mark.parametrize("bad_output", ["not a report", None, {"ai_raw_risk_score": 5}])
+def test_wrong_shaped_ai_output_falls_back_to_rules_only(srv, fake_ai, fixture_text, bad_output):
+    fake_ai(lambda yaml: bad_output)
     r = srv.audit(fixture_text("safe_workflow.yml"))
     assert r.ai_used is False
     assert r.status == "APPROVED"
@@ -106,12 +114,12 @@ def test_missing_analyzer_falls_back_to_rules_only(srv, fixture_text):
 
 # --- Redaction happens before the AI and the log ------------------------------------
 
-def test_ai_only_sees_redacted_text_and_log_has_no_secrets(srv, fake_ai):
+def test_ai_only_sees_redacted_text_and_log_has_no_secrets(srv, fake_ai, ai_report):
     seen = {}
 
-    def spy(yaml, flags):
+    def spy(yaml):
         seen["yaml"] = yaml
-        return {"risk_score": 0, "explanation": "x"}
+        return ai_report(0)
 
     fake_ai(spy)
     workflow = f"on: push\nenv:\n  T: {FAKE_GITHUB_TOKEN}\n  K: {FAKE_AWS_KEY}\n"
