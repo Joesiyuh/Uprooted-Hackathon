@@ -1,4 +1,4 @@
-"""AegisGate MCP server.
+"""Uproot MCP server.
 
 Exposes two tools to MCP clients (Claude Code, Claude Desktop, ...):
   - audit_github_workflow(workflow_yaml): audit raw GitHub Actions YAML
@@ -51,7 +51,7 @@ from src.rules import redact_secrets, run_deterministic_checks  # noqa: E402
 
 # Logs go to stderr (stdout is reserved for the MCP protocol).
 logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-log = logging.getLogger("aegisgate.mcp")
+log = logging.getLogger("uproot.mcp")
 
 # The AI analyzer is optional: if it is missing, broken, or Groq is down, we fall back
 # to the rules-only result. Import errors (e.g. missing API key at import) are tolerated.
@@ -219,9 +219,9 @@ def check_size(text: str) -> None:
 # ---------------------------------------------------------------------------
 
 server = MCPServer(
-    name="aegisgate",
+    name="uproot",
     instructions=(
-        "AegisGate audits GitHub Actions workflows for supply-chain attacks. "
+        "Uproot audits GitHub Actions workflows for supply-chain attacks. "
         "If status is PAUSED_FOR_HUMAN_REVIEW, do not run or merge the workflow; ask a human."
     ),
 )

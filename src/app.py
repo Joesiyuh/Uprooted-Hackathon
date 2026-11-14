@@ -12,7 +12,7 @@ import streamlit as st
 from src.ai_analyzer import analyze_workflow
 
 st.set_page_config(
-    page_title="AegisGate | Zero-Trust AI Pipeline Gatekeeper",
+    page_title="Uproot | Zero-Trust AI Pipeline Gatekeeper",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -172,7 +172,7 @@ def read_audit_log() -> list[dict]:
 
 # --- Sidebar Controls ---
 with st.sidebar:
-    st.markdown("### 🛡️ AegisGate Control Plane")
+    st.markdown("### 🛡️ Uproot Control Plane")
     st.caption("Zero-Trust CI/CD & AI Agent Governance")
     st.divider()
 
@@ -195,7 +195,7 @@ with st.sidebar:
 st.markdown("""
 <div class="hero-banner">
     <div class="hero-badge">Zero-Trust Supply Chain &amp; AI Governance</div>
-    <h1 class="hero-title">🛡️ AegisGate Pipeline Gatekeeper</h1>
+    <h1 class="hero-title">🛡️ Uproot Pipeline Gatekeeper</h1>
     <p class="hero-sub">
         Local secret redaction, deterministic CI/CD policy enforcement, sandboxed LLM risk scoring, and human-in-the-loop approval gates.
     </p>
@@ -232,7 +232,7 @@ if run_clicked:
                     "risk_score": result.final_risk_score,
                     "secrets_redacted": result.secrets_redacted_count,
                     "decision": "AUTO_APPROVED_LOW_RISK",
-                    "reviewer": "AegisGate Policy Engine",
+                    "reviewer": "Uproot Policy Engine",
                 })
         except Exception as exc:
             st.error(f"Audit failed: {exc}")

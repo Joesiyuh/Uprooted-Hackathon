@@ -1,6 +1,6 @@
-# 🛡️ AegisGate: A Governed AI Gatekeeper for CI/CD Pipelines
+# 🛡️ Uproot: A Governed AI Gatekeeper for CI/CD Pipelines
 
-**AegisGate audits GitHub Actions workflows for supply-chain attacks before they run. It is an AI security tool that is itself regulated: it only reads, it never sees secrets, the AI cannot override the safety rules, and anything risky stops for a human decision.**
+**Uproot audits GitHub Actions workflows for supply-chain attacks before they run. It is an AI security tool that is itself regulated: it only reads, it never sees secrets, the AI cannot override the safety rules, and anything risky stops for a human decision.**
 
 Built for the NC A&T × Cisco hackathon challenge *Securing the Future of Human–AI Coexistence*.
 
@@ -12,7 +12,7 @@ In March 2026, attackers compromised **Trivy**, a widely used open-source securi
 
 The root cause was **blind trust in an automated tool**: it ran with full access to secrets, it could reach the internet, and no one reviewed what it did.
 
-AegisGate is designed around the opposite principle. It is an automated security tool that does not have to be trusted blindly.
+Uproot is designed around the opposite principle. It is an automated security tool that does not have to be trusted blindly.
 
 ## How it works
 
@@ -108,12 +108,12 @@ Pick a demo scenario in the sidebar, click **Run Governed Security Audit**, then
 Use absolute paths; the server finds its own files from any working directory.
 
 ```bash
-claude mcp add aegisgate -- /path/to/Uprooted-Hackathon/.venv/bin/python /path/to/Uprooted-Hackathon/src/mcp_server.py
+claude mcp add uproot -- /path/to/Uprooted-Hackathon/.venv/bin/python /path/to/Uprooted-Hackathon/src/mcp_server.py
 ```
 
-Start `claude`, run `/mcp` to confirm `aegisgate` is connected, then ask:
+Start `claude`, run `/mcp` to confirm `uproot` is connected, then ask:
 
-> Use aegisgate to audit the trivy_attack_workflow fixture.
+> Use uproot to audit the trivy_attack_workflow fixture.
 
 ### Run the tests
 
@@ -136,7 +136,7 @@ tests/              38 pytest tests (unit + end-to-end over MCP stdio)
 
 ## Safeguards and limitations
 
-**What AegisGate guarantees**
+**What Uproot guarantees**
 - **Read-only.** It inspects text. It never runs workflows, edits code, or holds cloud credentials. `audit_fixture` can only read files inside `fixtures/`.
 - **No secrets leave the machine.** Redaction happens locally before the AI call, and the MCP audit log stores a SHA-256 hash of each input instead of the input itself.
 - **The AI cannot override the rules.** Any rule flag forces human review, whatever the AI says.
