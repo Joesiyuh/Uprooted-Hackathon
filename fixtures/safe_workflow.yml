@@ -1,0 +1,20 @@
+name: Production Security Scan (Hardened)
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  container-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Run pinned Trivy scanner
+        uses: aquasecurity/trivy-action@b6643a29fcbd7f34b6697dc2148d0a00882a27a3 # v0.28.0
+        with:
+          scan-type: 'fs'
+          severity: 'CRITICAL,HIGH'
