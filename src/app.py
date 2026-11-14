@@ -146,6 +146,13 @@ SCENARIOS = {
 }
 
 
+def _extract_findings(res) -> list[str]:
+    for attr in ("rule_findings", "deterministic_findings", "findings", "rule_violations", "violations"):
+        val = getattr(res, attr, None)
+        if val is not None:
+            return [str(x) for x in val]
+    return []
+
 def load_fixture(path: Path) -> str:
     if path.exists():
         return path.read_text(encoding="utf-8")
@@ -285,7 +292,7 @@ if "last_result" in st.session_state:
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-label">Deterministic Rule Hits</div>
-            <div class="kpi-value">{len(res.rule_findings)}</div>
+            <div class="kpi-value">{len(_extract_findings(res))}</div>
             <div class="kpi-sub">Hard-coded policy checks</div>
         </div>
         """, unsafe_allow_html=True)
@@ -300,9 +307,10 @@ if "last_result" in st.session_state:
         else:
             st.success(f"**Executive Verdict:** {res.ai_summary}")
 
-        if res.rule_findings:
+        findings = _extract_findings(res)
+        if findings:
             st.markdown("**Triggered Hard-Coded Guardrails:**")
-            for finding in res.rule_findings:
+            for finding in findings:
                 crit_cls = "finding-critical" if any(
                     tag in finding for tag in ["IOC", "INJECTION", "EXFIL", "REMOTE_CODE", "SECRET"]
                 ) else ""
