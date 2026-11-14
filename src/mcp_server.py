@@ -105,21 +105,26 @@ def rules_risk_score(flags: list[str]) -> int:
 def call_ai(redacted_yaml: str, flags: list[str]) -> tuple[int | None, str | None, str | None]:
     """Call the teammate's analyzer. Returns (ai_risk_score, explanation, error).
 
-    Expected contract (ai_analyzer.py is currently empty - see report):
-        analyze_workflow(redacted_yaml: str, flags: list[str]) -> dict
-        with keys "risk_score" (0-100) and "explanation" (str).
+    Teammate's contract (src/ai_analyzer.py):
+        analyze_workflow(workflow_yaml: str) -> GovernedAuditReport
+    It re-runs redaction and the rules itself, so `flags` is not passed; we still hand it
+    the already-redacted text so raw secrets never leave this process.
+    We use `ai_raw_risk_score` (the model's own opinion), NOT `final_risk_score`, which already
+    has the analyzer's own governance floors baked in; our governance in audit() applies on top.
     Any exception or unexpected shape -> (None, None, error) and we fall back to rules-only.
     """
     analyze = getattr(ai_analyzer, "analyze_workflow", None) if ai_analyzer else None
     if analyze is None:
         return None, None, "ai_analyzer.analyze_workflow is not available"
     try:
-        result = analyze(redacted_yaml, flags)
-        if not isinstance(result, dict):
-            raise TypeError(f"expected dict, got {type(result).__name__}")
-        explanation = str(result.get("explanation", "")).strip() or None
-        raw_score = result.get("risk_score")
-        ai_score = None if raw_score is None else max(0, min(100, int(raw_score)))
+        result = analyze(redacted_yaml)
+        raw_score = getattr(result, "ai_raw_risk_score", None)
+        if isinstance(raw_score, bool) or not isinstance(raw_score, int):
+            raise TypeError(f"expected int ai_raw_risk_score, got {type(raw_score).__name__}")
+        ai_score = max(0, min(100, raw_score))
+        summary = str(getattr(result, "ai_summary", "") or "").strip()
+        fix = str(getattr(result, "recommended_fix", "") or "").strip()
+        explanation = " ".join(p for p in (summary, f"Recommended fix: {fix}" if fix else "") if p) or None
         return ai_score, explanation, None
     except Exception as exc:  # Groq outage, timeout, bad JSON, bug in analyzer...
         log.warning("AI analysis failed, falling back to rules-only: %r", exc)
