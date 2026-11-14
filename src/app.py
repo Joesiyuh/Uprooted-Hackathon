@@ -12,7 +12,7 @@ import streamlit as st
 from src.ai_analyzer import analyze_workflow
 
 st.set_page_config(
-    page_title="Uprooted Pipeline Gatekeeper | Zero-Trust AI Security",
+    page_title="Uprooted Pipeline Gatekeepered Pipeline Gatekeeper | Zero-Trust AI Security",
     page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -166,7 +166,7 @@ def _extract_sanitized_yaml(res, raw_yaml: str) -> str:
         return raw_yaml
 
 def _extract_findings(res) -> list[str]:
-    for attr in ("deterministic_flags", "rule_findings", "deterministic_findings", "findings", "rule_violations", "violations"):
+    for attr in ("rule_findings", "deterministic_findings", "findings", "rule_violations", "violations"):
         val = getattr(res, attr, None)
         if val is not None:
             return [str(x) for x in val]
@@ -198,7 +198,7 @@ def read_audit_log() -> list[dict]:
 
 # --- Sidebar Controls ---
 with st.sidebar:
-    st.markdown("### 🛡️ Uprooted Pipeline Control Plane")
+    st.markdown("### 🛡️ Uprooted Pipeline Gatekeepered Control Plane")
     st.caption("Zero-Trust CI/CD & AI Agent Governance")
     st.divider()
 
@@ -221,7 +221,7 @@ with st.sidebar:
 st.markdown("""
 <div class="hero-banner">
     <div class="hero-badge">Zero-Trust Supply Chain &amp; AI Governance</div>
-    <h1 class="hero-title">🛡️ Uprooted Pipeline Gatekeeper</h1>
+    <h1 class="hero-title">🛡️ Uprooted Pipeline Gatekeepered Pipeline Gatekeeper</h1>
     <p class="hero-sub">
         Local secret redaction, deterministic CI/CD policy enforcement, sandboxed LLM risk scoring, and human-in-the-loop approval gates.
     </p>
@@ -258,12 +258,8 @@ if run_clicked:
                     "risk_score": int(_pick_attr(result, ("final_risk_score", "risk_score", "score"), 0)),
                     "secrets_redacted": int(_pick_attr(result, ("secrets_redacted_count", "redacted_count", "secrets_count"), 0)),
                     "decision": "AUTO_APPROVED_LOW_RISK",
-<<<<<<< HEAD
-                    "reviewer": "Uprooted Pipeline Policy Engine",
-=======
                     "justification": "Passed deterministic checks and low AI risk threshold.",
                     "reviewer": "Uprooted Pipeline Gatekeepered Policy Engine",
->>>>>>> feat/web-dashboard
                 })
         except Exception as exc:
             st.error(f"Audit failed: {exc}")
@@ -364,7 +360,7 @@ if "last_result" in st.session_state:
         with g1:
             reviewer_name = st.text_input(
                 "Approver / Security Lead",
-                value="",
+                value="Josiah (SecOps Lead)",
                 placeholder="Enter approver name & role",
             )
         with g2:
@@ -377,19 +373,16 @@ if "last_result" in st.session_state:
         b1, b2 = st.columns([1.2, 1.2])
         with b1:
             if st.button("🛑 Quarantine & Block Pipeline", type="primary", width="stretch"):
-                if not reviewer_name.strip():
-                    st.error("Governance Policy: Enter an Approver / Security Lead name before logging a quarantine decision.")
-                else:
-                    append_audit_log({
-                        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-                        "scenario": st.session_state.get("last_scenario", selected_scenario),
-                        "risk_score": score,
-                        "secrets_redacted": sec_count,
-                        "decision": "QUARANTINED_BLOCKED",
-                        "reviewer": reviewer_name.strip(),
-                        "justification": override_reason.strip() or "Blocked by policy gatekeeper due to elevated supply-chain risk.",
-                    })
-                    st.toast("Pipeline quarantined and logged to append-only log!", icon="🛑")
+                append_audit_log({
+                    "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "scenario": st.session_state.get("last_scenario", selected_scenario),
+                    "risk_score": score,
+                    "secrets_redacted": sec_count,
+                    "decision": "QUARANTINED_BLOCKED",
+                    "reviewer": reviewer_name.strip() or "Unspecified Reviewer",
+                    "justification": "Blocked by policy gatekeeper due to elevated supply-chain risk.",
+                })
+                st.toast("Pipeline quarantined and logged to append-only log!", icon="🛑")
         with b2:
             if st.button("⚠️ Override & Approve Execution", width="stretch"):
                 if not reviewer_name.strip() or len(override_reason.strip()) < 10:
@@ -410,7 +403,7 @@ if "last_result" in st.session_state:
 
     # --- Step 4: Audit Trail ---
     st.divider()
-    st.markdown("#### 4. Append-Only Governance Audit Trail (`audit_log.jsonl`)")
+    st.markdown("#### 4. Tamper-Evident Governance Audit Trail (`audit_log.jsonl`)")
     logs = read_audit_log()
     if logs:
         df = pd.DataFrame(logs)
