@@ -360,7 +360,7 @@ if "last_result" in st.session_state:
         with g1:
             reviewer_name = st.text_input(
                 "Approver / Security Lead",
-                value="Josiah (SecOps Lead)",
+                value="",
                 placeholder="Enter approver name & role",
             )
         with g2:
