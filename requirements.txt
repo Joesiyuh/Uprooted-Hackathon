@@ -1,0 +1,5 @@
+mcp[cli]
+groq
+pydantic
+python-dotenv
+streamlit

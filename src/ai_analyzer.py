@@ -3,15 +3,19 @@ import json
 import hashlib
 from datetime import datetime, timezone
 from typing import List, Literal
+from pathlib import Path
 from dotenv import load_dotenv
+
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
 from groq import Groq
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.rules import redact_secrets, run_deterministic_checks
 
-load_dotenv()
+load_dotenv(dotenv_path=ENV_PATH, override=True)
 
 class LLMSecurityAssessment(BaseModel):
+    model_config = ConfigDict(extra='forbid')
     ai_risk_score: int = Field(..., ge=0, le=100, description="Risk score from 0 (safe) to 100 (critical)")
     summary: str = Field(..., description="Concise 1-2 sentence plain-English explanation of security findings")
     recommended_fix: str = Field(..., description="Actionable remediation step for the engineer")
